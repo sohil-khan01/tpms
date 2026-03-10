@@ -82,7 +82,7 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard darkMode={darkMode} onViewCandidate={handleViewCandidateProfile} />;
+        return <Dashboard darkMode={darkMode} onViewCandidate={handleViewCandidateProfile} />;  //Dashboard
       case 'upload':
         return <UploadResume darkMode={darkMode} />;
       case 'jd-matcher':

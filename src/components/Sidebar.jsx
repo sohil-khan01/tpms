@@ -60,44 +60,41 @@ const Sidebar = ({ activeTab, setActiveTab, darkMode, adminUser, onLogout }) => 
       </nav>
 
       <div className={`p-4 border-t ${darkMode ? 'border-slate-700' : 'border-slate-700'} relative`}>
-        <button
-          onClick={handleUserClick}
-          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors"
-        >
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-            {adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('') : '👤'}
-          </div>
-          {!isCollapsed && (
-            <div className="flex-1 text-left">
-              <p className="font-medium">{adminUser?.name || 'Admin User'}</p>
-              <p className="text-xs text-slate-400">{adminUser?.email || 'admin@company.com'}</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleUserClick}
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors flex-1"
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+              {adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('') : '👤'}
             </div>
-          )}
+            {!isCollapsed && (
+              <div className="flex-1 text-left">
+                <p className="font-medium">{adminUser?.name || 'Admin User'}</p>
+                <p className="text-xs text-slate-400">{adminUser?.email || 'admin@company.com'}</p>
+              </div>
+            )}
+          </button>
+          
           {!isCollapsed && (
             <div className="flex flex-col gap-1">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveTab('profile');
-                }}
-                className="text-xs text-slate-400 hover:text-white transition-colors"
+                onClick={() => setActiveTab('profile')}
+                className="text-xs text-slate-400 hover:text-white transition-colors p-1"
                 title="View Profile"
               >
                 👤
               </button>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onLogout();
-                }}
-                className="text-xs text-slate-400 hover:text-red-400 transition-colors"
+                onClick={onLogout}
+                className="text-xs text-slate-400 hover:text-red-400 transition-colors p-1"
                 title="Logout"
               >
                 <CiLogout />
               </button>
             </div>
           )}
-        </button>
+        </div>
 
         {/* Collapsed User Menu */}
         {isCollapsed && showUserMenu && (
