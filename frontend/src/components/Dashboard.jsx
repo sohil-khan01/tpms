@@ -216,11 +216,11 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
                           onViewCandidate && onViewCandidate(candidate.id);
                           navigate(`/candidate/${candidate.id}`);
                         }}
-                        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                        className="text-blue-600 hover:text-blue-800 font-medium text-sm cursor-pointer"
                       >
                         View Profile
                       </button>
-                      <button className="text-green-600 hover:text-green-800 font-medium text-sm">
+                      <button className="text-green-600 hover:text-green-800 font-medium text-sm cursor-pointer">
                         Message
                       </button>
                     </div>

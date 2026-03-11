@@ -91,21 +91,21 @@ function App() {
           adminUser={adminUser}
           onLogout={handleLogout}
         />
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pt-16 lg:pt-0">
           <Routes>
             {/* Default route - redirect to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             
             {/* Main routes */}
-            {/* <Route 
+             <Route 
               path="/dashboard" 
               element={<Dashboard darkMode={darkMode} onViewCandidate={handleViewCandidateProfile} />} 
-            /> */}
+            /> 
             <Route 
               path="/upload" 
               element={<UploadResume darkMode={darkMode} />} 
             />
-            {/* <Route 
+            <Route 
               path="/jd-matcher" 
               element={<JDMatcher darkMode={darkMode} onViewCandidate={handleViewCandidateProfile} />} 
             />
@@ -137,7 +137,7 @@ function App() {
                   darkMode={darkMode}
                 />
               } 
-            /> */}
+            /> 
             
             {/* Catch all route - redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

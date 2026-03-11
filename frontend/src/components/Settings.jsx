@@ -13,7 +13,7 @@ const Settings = ({ darkMode, toggleDarkMode }) => {
   const [preferences, setPreferences] = useState({
     language: 'en',
     timezone: 'America/New_York',
-    dateFormat: 'MM/DD/YYYY',
+    dateFormat: 'DD/MM/YYYY',
     autoSave: true,
   });
 
