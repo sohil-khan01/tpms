@@ -12,12 +12,12 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
   const menuItems = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
     { id: 'upload', icon: '📤', label: 'Upload Resume', path: '/upload' },
-    // { id: 'jd-matcher', icon: '🎯', label: 'JD Matcher', path: '/jd-matcher' },
-    // { id: 'candidates', icon: '👥', label: 'All Candidates', path: '/candidates' },
-    // { id: 'messaging', icon: '💬', label: 'Messaging', path: '/messaging' },
-    // { id: 'customizer', icon: '✨', label: 'Resume Customizer', path: '/customizer', premium: true },
-    // { id: 'analytics', icon: '📈', label: 'Analytics', path: '/analytics' },
-    // { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
+    { id: 'jd-matcher', icon: '🎯', label: 'JD Matcher', path: '/jd-matcher' },
+    { id: 'candidates', icon: '👥', label: 'All Candidates', path: '/candidates' },
+    { id: 'members', icon: '🧑‍💼', label: 'Members', path: '/members' },
+    { id: 'messaging', icon: '💬', label: 'Messaging', path: '/messaging' },
+    { id: 'customizer', icon: '✨', label: 'Resume Customizer', path: '/customizer', premium: true },
+    { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
   ];
 
   // Close mobile menu when route changes
@@ -199,8 +199,11 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
                 </button>
                 <button
                   onClick={() => {
-                    onLogout();
-                    setIsMobileMenuOpen(false);
+                    const confirmed = window.confirm('Are you sure you want to logout?');
+                    if (confirmed) {
+                      onLogout();
+                      setIsMobileMenuOpen(false);
+                    }
                   }}
                   className="text-slate-400 hover:text-red-400 transition-colors p-1.5 hover:bg-slate-800 rounded"
                   title="Logout"
@@ -230,8 +233,11 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
               </button>
               <button
                 onClick={() => {
-                  onLogout();
-                  setShowUserMenu(false);
+                  const confirmed = window.confirm('Are you sure you want to logout?');
+                  if (confirmed) {
+                    onLogout();
+                    setShowUserMenu(false);
+                  }
                 }}
                 className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700 hover:text-red-400 transition-colors flex items-center gap-2"
               >

@@ -8,7 +8,7 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
     totalCandidates: 0,
     newThisWeek: 0,
     activePositions: 0,
-    matchRate: 0,
+    totalMembers: 0,
   });
 
   const [recentCandidates, setRecentCandidates] = useState([]);
@@ -38,7 +38,7 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
             totalCandidates: 1247,
             newThisWeek: 23,
             activePositions: 15,
-            matchRate: 78,
+            totalMembers: 8,
           });
 
           setRecentCandidates([
@@ -130,23 +130,34 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
           <p className="text-3xl font-bold text-slate-800">{stats.activePositions}</p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+        <div 
+          onClick={() => navigate('/members')}
+          className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm cursor-pointer hover:shadow-md hover:border-blue-300 transition-all"
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center text-2xl">
-              🎯
+              🧑‍💼
             </div>
-            <span className="text-green-600 text-sm font-medium">+5%</span>
+            <span className="text-green-600 text-sm font-medium">Active</span>
           </div>
-          <h3 className="text-slate-600 text-sm mb-1">Match Rate</h3>
-          <p className="text-3xl font-bold text-slate-800">{stats.matchRate}%</p>
+          <h3 className="text-slate-600 text-sm mb-1">Total Members</h3>
+          <p className="text-3xl font-bold text-slate-800">{stats.totalMembers}</p>
         </div>
       </div>
 
       {/* Recent Candidates Table */}
       <div className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} rounded-xl border shadow-sm`}>
-        <div className="p-6 border-b border-slate-200">
-          <h3 className="text-xl font-bold text-slate-800">Recent Candidates</h3>
-          <p className="text-slate-600 text-sm">Latest resumes processed by AI</p>
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-slate-800">Recent Candidates</h3>
+            <p className="text-slate-600 text-sm">Latest resumes processed by AI</p>
+          </div>
+          <button
+            onClick={() => navigate('/candidates')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            View All
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -220,9 +231,7 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
                       >
                         View Profile
                       </button>
-                      <button className="text-green-600 hover:text-green-800 font-medium text-sm cursor-pointer">
-                        Message
-                      </button>
+                     
                     </div>
                   </td>
                 </tr>

@@ -13,6 +13,7 @@ import AdminProfile from './components/AdminProfile';
 import CandidateProfile from './components/CandidateProfile';
 import Login from './components/Login';
 import './App.css';
+import Members from './components/Members';
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -112,6 +113,10 @@ function App() {
             <Route 
               path="/candidates" 
               element={<AllCandidates darkMode={darkMode} onViewCandidate={handleViewCandidateProfile} />} 
+            />
+            <Route 
+              path="/members" 
+              element={<Members darkMode={darkMode} />} 
             />
             <Route 
               path="/messaging" 
