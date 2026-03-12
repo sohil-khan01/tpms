@@ -126,11 +126,12 @@ const AllCandidates = ({ darkMode, onViewCandidate }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+        {/* Mobile Card View */}
+        <div className="block md:hidden p-4 space-y-4">
           {filteredCandidates.map((candidate) => (
             <div 
               key={candidate.id} 
-              className={`border rounded-lg p-6 hover:shadow-lg transition-shadow ${
+              className={`border rounded-lg p-4 hover:shadow-lg transition-shadow ${
                 darkMode ? 'border-slate-600 bg-slate-700' : 'border-slate-200 bg-white'
               }`}
             >
@@ -194,6 +195,93 @@ const AllCandidates = ({ darkMode, onViewCandidate }) => {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="text-left p-4 text-sm font-semibold text-slate-700">Candidate</th>
+                <th className="text-left p-4 text-sm font-semibold text-slate-700">Contact</th>
+                <th className="text-left p-4 text-sm font-semibold text-slate-700">Skills</th>
+                <th className="text-left p-4 text-sm font-semibold text-slate-700">Experience</th>
+                <th className="text-left p-4 text-sm font-semibold text-slate-700">Education</th>
+                <th className="text-left p-4 text-sm font-semibold text-slate-700">Match Score</th>
+                <th className="text-left p-4 text-sm font-semibold text-slate-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCandidates.map((candidate) => (
+                <tr key={candidate.id} className="border-t border-slate-200 hover:bg-slate-50">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {candidate.name.split(' ').map((n) => n[0]).join('')}
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800">{candidate.name}</p>
+                        {/* <p className="text-sm text-slate-500">ID: {candidate.id}</p> */}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="text-sm">
+                      <p className="text-slate-700">{candidate.email}</p>
+                      <p className="text-slate-500">{candidate.phone}</p>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex flex-wrap gap-1">
+                      {candidate.skills.slice(0, 3).map((skill, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                      {candidate.skills.length > 3 && (
+                        <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
+                          +{candidate.skills.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-sm text-slate-700">{candidate.experience}</span>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-sm text-slate-700">{candidate.education}</span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 bg-slate-200 rounded-full h-2">
+                        <div
+                          className="bg-green-500 h-2 rounded-full"
+                          style={{ width: `${candidate.matchScore}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium text-slate-700">
+                        {candidate.matchScore}%
+                      </span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <button 
+                      onClick={() => {
+                        onViewCandidate && onViewCandidate(candidate.id);
+                        navigate(`/candidate/${candidate.id}`);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 font-medium text-sm cursor-pointer"
+                    >
+                      View Profile
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {filteredCandidates.length === 0 && (

@@ -12,12 +12,12 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
   const menuItems = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard', path: '/dashboard' },
     { id: 'upload', icon: '📤', label: 'Upload Resume', path: '/upload' },
-    { id: 'jd-matcher', icon: '🎯', label: 'JD Matcher', path: '/jd-matcher' },
-    { id: 'candidates', icon: '👥', label: 'All Candidates', path: '/candidates' },
     { id: 'members', icon: '🧑‍💼', label: 'Members', path: '/members' },
-    { id: 'messaging', icon: '💬', label: 'Messaging', path: '/messaging' },
-    { id: 'customizer', icon: '✨', label: 'Resume Customizer', path: '/customizer', premium: true },
-    { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
+    { id: 'candidates', icon: '👥', label: 'All Candidates', path: '/candidates' },
+    // { id: 'jd-matcher', icon: '🎯', label: 'JD Matcher', path: '/jd-matcher' },
+    // { id: 'messaging', icon: '💬', label: 'Messaging', path: '/messaging' },
+    // { id: 'customizer', icon: '✨', label: 'Resume Customizer', path: '/customizer', premium: true },
+    // { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
   ];
 
   // Close mobile menu when route changes
@@ -85,7 +85,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-30 z-40"
+          className="lg:hidden fixed inset-0 bg-transparent bg-opacity-30 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -137,7 +137,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
             <button
               key={item.id}
               onClick={() => handleNavigation(item.path)}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-4'} p-3 rounded-lg mb-2 transition-all relative ${
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-4'} p-3 rounded-lg mb-2 transition-all relative cursor-pointer ${
                 location.pathname === item.path
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'hover:bg-slate-800 text-slate-300 hover:text-white'
@@ -164,7 +164,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
           {isCollapsed ? (
             <button
               onClick={handleUserClick}
-              className="w-full flex items-center justify-center p-3 rounded-lg hover:bg-slate-800 transition-colors"
+              className="w-full flex items-center justify-center p-3 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
               title="User menu"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
@@ -175,7 +175,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
             <div className="flex items-center gap-3 p-2">
               <button
                 onClick={handleUserClick}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors flex-1"
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors flex-1 cursor-pointer"
               >
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                   {adminUser?.name ? adminUser.name.split(' ').map(n => n[0]).join('') : 'AU'}
@@ -192,7 +192,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
                     navigate('/profile');
                     setIsMobileMenuOpen(false);
                   }}
-                  className="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded"
+                  className="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded cursor-pointer"
                   title="View Profile"
                 >
                   👤
@@ -205,7 +205,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
                       setIsMobileMenuOpen(false);
                     }
                   }}
-                  className="text-slate-400 hover:text-red-400 transition-colors p-1.5 hover:bg-slate-800 rounded"
+                  className="text-slate-400 hover:text-red-400 transition-colors p-1.5 hover:bg-slate-800 rounded cursor-pointer"
                   title="Logout"
                 >
                   <CiLogout />
@@ -226,7 +226,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
                   navigate('/profile');
                   setShowUserMenu(false);
                 }}
-                className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <span>👤</span>
                 View Profile
@@ -239,7 +239,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
                     setShowUserMenu(false);
                   }
                 }}
-                className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700 hover:text-red-400 transition-colors flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-slate-300 hover:bg-slate-700 hover:text-red-400 transition-colors flex items-center gap-2 cursor-pointer"
               >
                 <span><CiLogout /></span>
                 Logout

@@ -163,7 +163,7 @@ const Members = ({ darkMode }) => {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
         >
           <span>+</span>
           Add Member
@@ -234,7 +234,101 @@ const Members = ({ darkMode }) => {
             Showing {filteredMembers.length} of {members.length} members
           </p>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile Card View */}
+        <div className="block md:hidden min-h-[400px]">
+          {filteredMembers.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className={`text-lg ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                No members found matching your search.
+              </p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-2 text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 space-y-4">
+              {filteredMembers.map((member) => (
+                <div 
+                  key={member.id} 
+                  className={`border rounded-lg p-4 ${
+                    darkMode ? 'border-slate-600 bg-slate-700' : 'border-slate-200 bg-white'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {member.name.split(' ').map((n) => n[0]).join('')}
+                      </div>
+                      <div>
+                        <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                          {member.name}
+                        </h3>
+                        <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {member.email}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        member.status === 'Active'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {member.status}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Role:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
+                        {member.role}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Department:</span>
+                      <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {member.department}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Phone:</span>
+                      <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {member.phone}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Join Date:</span>
+                      <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {member.joinDate}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-200">
+                    <button className="flex-1 text-blue-600 hover:text-blue-800 font-medium text-sm py-2 cursor-pointer">
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMember(member.id)}
+                      className="flex-1 text-red-600 hover:text-red-800 font-medium text-sm py-2 cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto min-h-[500px]">
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
@@ -303,12 +397,12 @@ const Members = ({ darkMode }) => {
                   </td>
                   <td className="p-4">
                     <div className="flex gap-2">
-                      <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                      <button className="text-blue-600 hover:text-blue-800 font-medium text-sm cursor-pointer">
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteMember(member.id)}
-                        className="text-red-600 hover:text-red-800 font-medium text-sm"
+                        className="text-red-600 hover:text-red-800 font-medium text-sm cursor-pointer"
                       >
                         Delete
                       </button>
@@ -462,13 +556,13 @@ const Members = ({ darkMode }) => {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
                 >
                   Add Member
                 </button>

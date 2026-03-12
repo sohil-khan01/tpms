@@ -21,62 +21,69 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
         setLoading(true);
         setError('');
 
-        // Try to fetch from backend first
+        // Use mock data directly for faster loading
+        // TODO: Replace with actual API calls when backend is ready
+        setStats({
+          totalCandidates: 1247,
+          newThisWeek: 23,
+          activePositions: 15,
+          totalMembers: 8,
+        });
+
+        setRecentCandidates([
+          {
+            id: 1,
+            name: 'John Doe',
+            email: 'john.doe@email.com',
+            phone: '+1 234 567 8900',
+            skills: ['React', 'Node.js', 'Python', 'AWS'],
+            experience: '5 years',
+            education: 'BS Computer Science',
+            uploadDate: '2024-03-08',
+            matchScore: 92,
+          },
+          {
+            id: 2,
+            name: 'Jane Smith',
+            email: 'jane.smith@email.com',
+            phone: '+1 234 567 8901',
+            skills: ['Java', 'Spring Boot', 'Kubernetes', 'Docker'],
+            experience: '7 years',
+            education: 'MS Software Engineering',
+            uploadDate: '2024-03-07',
+            matchScore: 88,
+          },
+          {
+            id: 3,
+            name: 'Mike Johnson',
+            email: 'mike.j@email.com',
+            phone: '+1 234 567 8902',
+            skills: ['Angular', 'TypeScript', 'MongoDB', 'Express'],
+            experience: '4 years',
+            education: 'BS Information Technology',
+            uploadDate: '2024-03-06',
+            matchScore: 85,
+          },
+        ]);
+
+        // Optional: Try to fetch from backend with timeout (uncomment when backend is ready)
+        /*
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+          
           const [statsData, candidatesData] = await Promise.all([
-            dashboardAPI.getStats(),
-            dashboardAPI.getRecentCandidates(),
+            dashboardAPI.getStats({ signal: controller.signal }),
+            dashboardAPI.getRecentCandidates({ signal: controller.signal }),
           ]);
 
+          clearTimeout(timeoutId);
           setStats(statsData);
           setRecentCandidates(candidatesData);
         } catch (apiError) {
           console.warn('Backend API not available, using mock data:', apiError);
-          
-          // Fallback to mock data if backend is not available
-          setStats({
-            totalCandidates: 1247,
-            newThisWeek: 23,
-            activePositions: 15,
-            totalMembers: 8,
-          });
-
-          setRecentCandidates([
-            {
-              id: 1,
-              name: 'John Doe',
-              email: 'john.doe@email.com',
-              phone: '+1 234 567 8900',
-              skills: ['React', 'Node.js', 'Python', 'AWS'],
-              experience: '5 years',
-              education: 'BS Computer Science',
-              uploadDate: '2024-03-08',
-              matchScore: 92,
-            },
-            {
-              id: 2,
-              name: 'Jane Smith',
-              email: 'jane.smith@email.com',
-              phone: '+1 234 567 8901',
-              skills: ['Java', 'Spring Boot', 'Kubernetes', 'Docker'],
-              experience: '7 years',
-              education: 'MS Software Engineering',
-              uploadDate: '2024-03-07',
-              matchScore: 88,
-            },
-            {
-              id: 3,
-              name: 'Mike Johnson',
-              email: 'mike.j@email.com',
-              phone: '+1 234 567 8902',
-              skills: ['Angular', 'TypeScript', 'MongoDB', 'Express'],
-              experience: '4 years',
-              education: 'BS Information Technology',
-              uploadDate: '2024-03-06',
-              matchScore: 85,
-            },
-          ]);
         }
+        */
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         setError(handleAPIError(error));
@@ -154,13 +161,102 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
           </div>
           <button
             onClick={() => navigate('/candidates')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             View All
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="block md:hidden p-4 space-y-4">
+          {recentCandidates.map((candidate) => (
+            <div 
+              key={candidate.id} 
+              className={`border rounded-lg p-4 ${
+                darkMode ? 'border-slate-600 bg-slate-700' : 'border-slate-200 bg-white'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {candidate.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                      {candidate.name}
+                    </h3>
+                    <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {candidate.education}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-12 bg-slate-200 rounded-full h-2">
+                    <div
+                      className="bg-green-500 h-2 rounded-full"
+                      style={{ width: `${candidate.matchScore}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-xs font-medium text-slate-700">
+                    {candidate.matchScore}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Email:</span>
+                  <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    {candidate.email}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Phone:</span>
+                  <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    {candidate.phone}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Experience:</span>
+                  <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    {candidate.experience}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1 mb-4">
+                {candidate.skills.slice(0, 4).map((skill, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                  >
+                    {skill}
+                  </span>
+                ))}
+                {candidate.skills.length > 4 && (
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    darkMode ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    +{candidate.skills.length - 4}
+                  </span>
+                )}
+              </div>
+
+              <button 
+                onClick={() => {
+                  onViewCandidate && onViewCandidate(candidate.id);
+                  navigate(`/candidate/${candidate.id}`);
+                }}
+                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                View Profile
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
