@@ -179,7 +179,7 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {candidate.name.charAt(0)}
+                     {candidate.name.split(' ').map((n) => n[0]).join('')}
                   </div>
                   <div>
                     <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-slate-800'}`}>
@@ -271,10 +271,15 @@ const Dashboard = ({ darkMode, onViewCandidate }) => {
             <tbody>
               {recentCandidates.map((candidate) => (
                 <tr key={candidate.id} className="border-t border-slate-200 hover:bg-slate-50">
-                  <td className="p-4">
+                    <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {candidate.name.split(' ').map((n) => n[0]).join('')}
+                      </div>
                     <div>
                       <p className="font-medium text-slate-800">{candidate.name}</p>
                       <p className="text-sm text-slate-500">{candidate.education}</p>
+                    </div>
                     </div>
                   </td>
                   <td className="p-4">

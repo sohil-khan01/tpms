@@ -22,6 +22,24 @@ const Members = ({ darkMode }) => {
 
   const [validationErrors, setValidationErrors] = useState({});
 
+  // Helper function to get initials from username
+  const getInitials = (username) => {
+    if (!username) return 'U';
+    
+    // Split by space, underscore, or dot to handle different username formats
+    const parts = username.split(/[\s._-]+/);
+    
+    if (parts.length >= 2) {
+      // If we have multiple parts, take first letter of first and last part
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    } else {
+      // If only one part, take first two letters or just first letter
+      return parts[0].length >= 2 
+        ? (parts[0].charAt(0) + parts[0].charAt(1)).toUpperCase()
+        : parts[0].charAt(0).toUpperCase();
+    }
+  };
+
   // Regex patterns for validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^[+]?[\d\s\-\(\)]{10,15}$/;
@@ -241,13 +259,34 @@ const Members = ({ darkMode }) => {
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-slate-600 text-sm mb-1">Admins</h3>
           <p className="text-3xl font-bold text-purple-600">
-            {members.filter((m) => m.role === 'ADMIN').length}
+            {(() => {
+              // console.log('All members for admin count:', members.map(m => ({ username: m.username, role: m.role })));
+              const adminCount = members.filter((m) => {
+                const role = m.role ? m.role.toLowerCase() : '';
+                const isAdmin = role === 'admin' || m.role === 'Admin' || m.role === 'ADMIN';
+                // console.log(`Member: ${m.username}, Role: "${m.role}", Lowercase: "${role}", Is Admin: ${isAdmin}`);
+                return isAdmin;
+              }).length;
+              // console.log('Final Admin Count:', adminCount);
+              return adminCount;
+            })()}
           </p>
         </div>
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-slate-600 text-sm mb-1">Recruiters</h3>
           <p className="text-3xl font-bold text-blue-600">
-            {members.filter((m) => m.role && m.role.includes('RECRUITER')).length}
+            {(() => {
+              const recruiterCount = members.filter((m) => {
+                const role = m.role ? m.role.toLowerCase() : '';
+                const isRecruiter = role === 'recruiter' || m.role === 'Recruiter' || m.role === 'RECRUITER' || 
+                                   role === 'senior_recruiter' || m.role === 'Senior Recruiter' || m.role === 'SENIOR_RECRUITER' ||
+                                   role.includes('recruiter');
+                // console.log(`Member: ${m.username}, Role: "${m.role}", Lowercase: "${role}", Is Recruiter: ${isRecruiter}`);
+                return isRecruiter;
+              }).length;
+              // console.log('Final Recruiter Count:', recruiterCount);
+              return recruiterCount;
+            })()}
           </p>
         </div>
       </div>
@@ -317,7 +356,7 @@ const Members = ({ darkMode }) => {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                        {member.username ? member.username.charAt(0).toUpperCase() : 'U'}
+                        {getInitials(member.username)}
                       </div>
                       <div>
                         <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-slate-800'}`}>
@@ -423,7 +462,7 @@ const Members = ({ darkMode }) => {
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                        {member.username ? member.username.charAt(0).toUpperCase() : 'U'}
+                        {getInitials(member.username)}
                       </div>
                       <div>
                         <p className="font-medium text-slate-800">{member.username || 'Unknown User'}</p>
