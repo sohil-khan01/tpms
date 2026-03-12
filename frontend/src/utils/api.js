@@ -31,14 +31,50 @@ const apiCall = async (endpoint, options = {}) => {
   };
 
   try {
-    const response = await fetch(url, config);
-    const data = await response.json();
+    console.log('API Call:', {
+      url,
+      method: config.method || 'GET',
+      body: config.body,
+      headers: config.headers
+    });
 
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    const response = await fetch(url, config);
+    
+    // Try to get response text first
+    let responseText;
+    try {
+      responseText = await response.text();
+    } catch (e) {
+      responseText = 'Unable to read response';
     }
 
-    return data;
+    console.log('API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      responseText
+    });
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      
+      // Try to parse error response
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {
+        // If not JSON, use the text response or status text
+        errorMessage = responseText || response.statusText || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    // Try to parse as JSON, fallback to text
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      return responseText;
+    }
   } catch (error) {
     console.error(`API call failed for ${endpoint}:`, error);
     throw error;
@@ -161,8 +197,41 @@ export const dashboardAPI = {
   },
 };
 
+// Members API calls
+export const membersAPI = {
+  getAll: async () => {
+    return apiCall('/members/all');
+  },
+
+  getById: async (id) => {
+    return apiCall(`/members/${id}`);
+  },
+
+  add: async (memberData) => {
+    return apiCall('/members/add', {
+      method: 'POST',
+      body: JSON.stringify(memberData),
+    });
+  },
+
+  update: async (id, memberData) => {
+    return apiCall(`/members/update/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(memberData),
+    });
+  },
+
+  delete: async (id) => {
+    return apiCall(`/members/soft-delete/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 // Error handler for API calls
 export const handleAPIError = (error) => {
+  console.error('API Error Details:', error);
+  
   if (error.message.includes('fetch')) {
     return 'Unable to connect to server. Please check if the backend is running.';
   } else if (error.message.includes('401')) {
@@ -176,7 +245,9 @@ export const handleAPIError = (error) => {
   } else if (error.message.includes('404')) {
     return 'Requested resource not found.';
   } else if (error.message.includes('500')) {
-    return 'Server error. Please try again later.';
+    return `Server error: ${error.message}. Please check the backend logs and try again.`;
+  } else if (error.message.includes('400')) {
+    return `Bad request: ${error.message}. Please check your input data.`;
   } else {
     return error.message || 'An unexpected error occurred.';
   }
@@ -188,5 +259,6 @@ export default {
   jdAPI,
   messagingAPI,
   dashboardAPI,
+  membersAPI,
   handleAPIError,
 };

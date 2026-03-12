@@ -1,153 +1,193 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { membersAPI, handleAPIError } from '../utils/api';
 
 const Members = ({ darkMode }) => {
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [members, setMembers] = useState([
-    {
-      id: 1,
-      name: 'Rahul Kumar',
-      email: 'rahul.kumar@company.com',
-      role: 'Admin',
-      department: 'IT',
-      phone: '+91 98765 43210',
-      joinDate: '2024-01-15',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      name: 'Priya Sharma',
-      email: 'priya.sharma@company.com',
-      role: 'Manager',
-      department: 'HR',
-      phone: '+91 98765 43211',
-      joinDate: '2024-02-10',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      name: 'Amit Patel',
-      email: 'amit.patel@company.com',
-      role: 'Recruiter',
-      department: 'Recruitment',
-      phone: '+91 98765 43212',
-      joinDate: '2024-03-05',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      name: 'Sneha Gupta',
-      email: 'sneha.gupta@company.com',
-      role: 'Recruiter',
-      department: 'Recruitment',
-      phone: '+91 98765 43213',
-      joinDate: '2024-03-20',
-      status: 'Active',
-    },
-    {
-      id: 5,
-      name: 'Vikram Singh',
-      email: 'vikram.singh@company.com',
-      role: 'Team Lead',
-      department: 'IT',
-      phone: '+91 98765 43214',
-      joinDate: '2024-01-20',
-      status: 'Active',
-    },
-    {
-      id: 6,
-      name: 'Neha Verma',
-      email: 'neha.verma@company.com',
-      role: 'HR Executive',
-      department: 'HR',
-      phone: '+91 98765 43215',
-      joinDate: '2024-04-01',
-      status: 'Active',
-    },
-    {
-      id: 7,
-      name: 'Rajesh Khanna',
-      email: 'rajesh.khanna@company.com',
-      role: 'Senior Recruiter',
-      department: 'Recruitment',
-      phone: '+91 98765 43216',
-      joinDate: '2023-12-10',
-      status: 'Active',
-    },
-    {
-      id: 8,
-      name: 'Anita Desai',
-      email: 'anita.desai@company.com',
-      role: 'Admin',
-      department: 'IT',
-      phone: '+91 98765 43217',
-      joinDate: '2024-02-25',
-      status: 'Inactive',
-    },
-  ]);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [editingMember, setEditingMember] = useState(null);
 
   const [newMember, setNewMember] = useState({
-    name: '',
+    username: '',
     email: '',
+    phone: '',
     role: '',
     department: '',
-    phone: '',
-    status: 'Active',
+    password: '',
   });
 
-  const handleAddMember = (e) => {
-    e.preventDefault();
-    const member = {
-      id: members.length + 1,
-      ...newMember,
-      joinDate: new Date().toISOString().split('T')[0],
-    };
-    setMembers([...members, member]);
-    setNewMember({
-      name: '',
-      email: '',
-      role: '',
-      department: '',
-      phone: '',
-      status: 'Active',
-    });
-    setShowAddModal(false);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Regex patterns for validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[+]?[\d\s\-\(\)]{10,15}$/;
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+  // Validation functions
+  const validateForm = () => {
+    const errors = {};
+
+    if (!emailRegex.test(newMember.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    // Phone is optional, but if provided, must be valid
+    if (newMember.phone && newMember.phone.trim() && !phoneRegex.test(newMember.phone)) {
+      errors.phone = 'Please enter a valid phone number (10-15 digits)';
+    }
+
+    if (!passwordRegex.test(newMember.password)) {
+      errors.password = 'Password must be at least 8 characters with uppercase, lowercase, number, and special character';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleDeleteMember = (id) => {
-    const confirmed = window.confirm('Are you sure you want to delete this member?');
-    if (confirmed) {
-      setMembers(members.filter((m) => m.id !== id));
+  // Fetch members from API
+  useEffect(() => {
+    fetchMembers();
+  }, []);
+
+  const fetchMembers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await membersAPI.getAll();
+      setMembers(data);
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
+      setError(handleAPIError(error));
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Filter members based on search query (name, role, department)
+  const handleAddMember = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Clean the data before sending
+      const memberData = {
+        ...newMember,
+        phone: newMember.phone.trim() || null // Send null if phone is empty
+      };
+      
+      console.log('Adding member with data:', memberData);
+      
+      await membersAPI.add(memberData);
+      setNewMember({
+        username: '',
+        email: '',
+        phone: '',
+        role: '',
+        department: '',
+        password: '',
+      });
+      setValidationErrors({});
+      setShowAddModal(false);
+      await fetchMembers(); // Refresh the list
+    } catch (error) {
+      console.error('Failed to add member:', error);
+      setError(handleAPIError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditMember = async (e) => {
+    e.preventDefault();
+    if (!editingMember) return;
+
+    try {
+      setLoading(true);
+      const updateData = {
+        phone: editingMember.phone,
+        role: editingMember.role,
+        department: editingMember.department,
+      };
+      await membersAPI.update(editingMember.id, updateData);
+      setEditingMember(null);
+      await fetchMembers(); // Refresh the list
+    } catch (error) {
+      console.error('Failed to update member:', error);
+      setError(handleAPIError(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteMember = async (id) => {
+    const confirmed = window.confirm('Are you sure you want to delete this member?');
+    if (confirmed) {
+      try {
+        setLoading(true);
+        await membersAPI.delete(id);
+        await fetchMembers(); // Refresh the list
+      } catch (error) {
+        console.error('Failed to delete member:', error);
+        setError(handleAPIError(error));
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Filter members based on search query (username, role, department)
   const filteredMembers = members.filter((member) => {
     const query = searchQuery.toLowerCase();
     return (
-      member.name.toLowerCase().includes(query) ||
-      member.role.toLowerCase().includes(query) ||
-      member.department.toLowerCase().includes(query)
+      (member.username && member.username.toLowerCase().includes(query)) ||
+      (member.email && member.email.toLowerCase().includes(query)) ||
+      (member.role && member.role.toLowerCase().includes(query)) ||
+      (member.department && member.department.toLowerCase().includes(query))
     );
   });
 
   const getRoleBadgeColor = (role) => {
     switch (role) {
-      case 'Admin':
+      case 'ADMIN':
         return 'bg-red-100 text-red-700';
-      case 'Manager':
+      case 'MANAGER':
         return 'bg-blue-100 text-blue-700';
-      case 'Team Lead':
+      case 'TEAM_LEAD':
         return 'bg-purple-100 text-purple-700';
-      case 'Recruiter':
-      case 'Senior Recruiter':
+      case 'RECRUITER':
+      case 'SENIOR_RECRUITER':
         return 'bg-green-100 text-green-700';
+      case 'HR_EXECUTIVE':
+        return 'bg-orange-100 text-orange-700';
       default:
         return 'bg-slate-100 text-slate-700';
     }
   };
+
+  const formatRole = (role) => {
+    return role ? role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
+  };
+
+  if (loading) {
+    return (
+      <div className={`p-8 min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className={darkMode ? 'text-slate-400' : 'text-slate-600'}>Loading members...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`p-8 min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
@@ -162,13 +202,29 @@ const Members = ({ darkMode }) => {
           </p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setShowAddModal(true);
+            setValidationErrors({});
+          }}
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
         >
           <span>+</span>
           Add Member
         </button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+          {error}
+          <button
+            onClick={() => setError('')}
+            className="ml-2 text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -179,19 +235,19 @@ const Members = ({ darkMode }) => {
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-slate-600 text-sm mb-1">Active</h3>
           <p className="text-3xl font-bold text-green-600">
-            {members.filter((m) => m.status === 'Active').length}
+            {members.filter((m) => m.status === 'ACTIVE' || !m.status).length}
           </p>
         </div>
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-slate-600 text-sm mb-1">Admins</h3>
           <p className="text-3xl font-bold text-purple-600">
-            {members.filter((m) => m.role === 'Admin').length}
+            {members.filter((m) => m.role === 'ADMIN').length}
           </p>
         </div>
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-slate-600 text-sm mb-1">Recruiters</h3>
           <p className="text-3xl font-bold text-blue-600">
-            {members.filter((m) => m.role.includes('Recruiter')).length}
+            {members.filter((m) => m.role && m.role.includes('RECRUITER')).length}
           </p>
         </div>
       </div>
@@ -208,7 +264,7 @@ const Members = ({ darkMode }) => {
           <div className="relative w-full sm:w-80">
             <input
               type="text"
-              placeholder="Search by name, role or department..."
+              placeholder="Search by username, email, role or department..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full px-4 py-2 pl-10 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
@@ -261,11 +317,11 @@ const Members = ({ darkMode }) => {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                        {member.name.split(' ').map((n) => n[0]).join('')}
+                        {member.username ? member.username.charAt(0).toUpperCase() : 'U'}
                       </div>
                       <div>
                         <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                          {member.name}
+                          {member.username || 'Unknown User'}
                         </h3>
                         <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                           {member.email}
@@ -274,12 +330,12 @@ const Members = ({ darkMode }) => {
                     </div>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        member.status === 'Active'
+                        member.status === 'ACTIVE' || !member.status
                           ? 'bg-green-100 text-green-700'
                           : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {member.status}
+                      {member.status === 'ACTIVE' || !member.status ? 'Active' : 'Inactive'}
                     </span>
                   </div>
 
@@ -287,7 +343,7 @@ const Members = ({ darkMode }) => {
                     <div className="flex items-center justify-between">
                       <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Role:</span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
-                        {member.role}
+                        {formatRole(member.role)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -302,16 +358,21 @@ const Members = ({ darkMode }) => {
                         {member.phone}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Join Date:</span>
-                      <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                        {member.joinDate}
-                      </span>
-                    </div>
+                    {member.createdAt && (
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Join Date:</span>
+                        <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                          {new Date(member.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-2 pt-2 border-t border-slate-200">
-                    <button className="flex-1 text-blue-600 hover:text-blue-800 font-medium text-sm py-2 cursor-pointer">
+                    <button 
+                      onClick={() => setEditingMember(member)}
+                      className="flex-1 text-blue-600 hover:text-blue-800 font-medium text-sm py-2 cursor-pointer"
+                    >
                       Edit
                     </button>
                     <button
@@ -362,17 +423,17 @@ const Members = ({ darkMode }) => {
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                        {member.name.split(' ').map((n) => n[0]).join('')}
+                        {member.username ? member.username.charAt(0).toUpperCase() : 'U'}
                       </div>
                       <div>
-                        <p className="font-medium text-slate-800">{member.name}</p>
+                        <p className="font-medium text-slate-800">{member.username || 'Unknown User'}</p>
                         <p className="text-sm text-slate-500">{member.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
-                      {member.role}
+                      {formatRole(member.role)}
                     </span>
                   </td>
                   <td className="p-4">
@@ -382,22 +443,27 @@ const Members = ({ darkMode }) => {
                     <span className="text-sm text-slate-700">{member.phone}</span>
                   </td>
                   <td className="p-4">
-                    <span className="text-sm text-slate-700">{member.joinDate}</span>
+                    <span className="text-sm text-slate-700">
+                      {member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}
+                    </span>
                   </td>
                   <td className="p-4">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        member.status === 'Active'
+                        member.status === 'ACTIVE' || !member.status
                           ? 'bg-green-100 text-green-700'
                           : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {member.status}
+                      {member.status === 'ACTIVE' || !member.status ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="p-4">
                     <div className="flex gap-2">
-                      <button className="text-blue-600 hover:text-blue-800 font-medium text-sm cursor-pointer">
+                      <button 
+                        onClick={() => setEditingMember(member)}
+                        className="text-blue-600 hover:text-blue-800 font-medium text-sm cursor-pointer"
+                      >
                         Edit
                       </button>
                       <button
@@ -425,7 +491,10 @@ const Members = ({ darkMode }) => {
                   Add New Member
                 </h3>
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setValidationErrors({});
+                  }}
                   className="text-slate-400 hover:text-slate-600 text-2xl"
                 >
                   ×
@@ -436,19 +505,19 @@ const Members = ({ darkMode }) => {
             <form onSubmit={handleAddMember} className="p-6 space-y-4">
               <div>
                 <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                  Full Name *
+                  Username *
                 </label>
                 <input
                   type="text"
                   required
-                  value={newMember.name}
-                  onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                  value={newMember.username}
+                  onChange={(e) => setNewMember({ ...newMember, username: e.target.value })}
                   className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     darkMode
                       ? 'bg-slate-700 border-slate-600 text-white'
                       : 'bg-white border-slate-300 text-slate-800'
                   }`}
-                  placeholder="Enter full name"
+                  placeholder="Enter username"
                 />
               </div>
 
@@ -460,14 +529,24 @@ const Members = ({ darkMode }) => {
                   type="email"
                   required
                   value={newMember.email}
-                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                  onChange={(e) => {
+                    setNewMember({ ...newMember, email: e.target.value });
+                    if (validationErrors.email) {
+                      setValidationErrors({ ...validationErrors, email: '' });
+                    }
+                  }}
                   className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    darkMode
-                      ? 'bg-slate-700 border-slate-600 text-white'
-                      : 'bg-white border-slate-300 text-slate-800'
+                    validationErrors.email 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : darkMode
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-800'
                   }`}
                   placeholder="Enter email address"
                 />
+                {validationErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                )}
               </div>
 
               <div>
@@ -477,14 +556,24 @@ const Members = ({ darkMode }) => {
                 <input
                   type="tel"
                   value={newMember.phone}
-                  onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                  onChange={(e) => {
+                    setNewMember({ ...newMember, phone: e.target.value });
+                    if (validationErrors.phone) {
+                      setValidationErrors({ ...validationErrors, phone: '' });
+                    }
+                  }}
                   className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    darkMode
-                      ? 'bg-slate-700 border-slate-600 text-white'
-                      : 'bg-white border-slate-300 text-slate-800'
+                    validationErrors.phone 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : darkMode
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-800'
                   }`}
-                  placeholder="Enter phone number"
+                  placeholder="Enter phone number (+1234567890)"
                 />
+                {validationErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.phone}</p>
+                )}
               </div>
 
               <div>
@@ -502,12 +591,12 @@ const Members = ({ darkMode }) => {
                   }`}
                 >
                   <option value="">Select Role</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Manager">Manager</option>
-                  <option value="Team Lead">Team Lead</option>
-                  <option value="Recruiter">Recruiter</option>
-                  <option value="Senior Recruiter">Senior Recruiter</option>
-                  <option value="HR Executive">HR Executive</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="TEAM_LEAD">Team Lead</option>
+                  <option value="RECRUITER">Recruiter</option>
+                  <option value="SENIOR_RECRUITER">Senior Recruiter</option>
+                  <option value="HR_EXECUTIVE">HR Executive</option>
                 </select>
               </div>
 
@@ -531,25 +620,39 @@ const Members = ({ darkMode }) => {
                   <option value="Recruitment">Recruitment</option>
                   <option value="Sales">Sales</option>
                   <option value="Marketing">Marketing</option>
+                  <option value="IT Operations">IT Operations</option>
                 </select>
               </div>
 
               <div>
                 <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                  Status
+                  Password *
                 </label>
-                <select
-                  value={newMember.status}
-                  onChange={(e) => setNewMember({ ...newMember, status: e.target.value })}
+                <input
+                  type="password"
+                  required
+                  value={newMember.password}
+                  onChange={(e) => {
+                    setNewMember({ ...newMember, password: e.target.value });
+                    if (validationErrors.password) {
+                      setValidationErrors({ ...validationErrors, password: '' });
+                    }
+                  }}
                   className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    darkMode
-                      ? 'bg-slate-700 border-slate-600 text-white'
-                      : 'bg-white border-slate-300 text-slate-800'
+                    validationErrors.password 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : darkMode
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-slate-300 text-slate-800'
                   }`}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
+                  placeholder="Enter password (min 8 chars, 1 upper, 1 lower, 1 number, 1 special)"
+                />
+                {validationErrors.password && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+                )}
+                <p className="text-xs text-slate-500 mt-1">
+                  {/* Password must contain at least 8 characters with uppercase, lowercase, number, and special character */}
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -565,6 +668,141 @@ const Members = ({ darkMode }) => {
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
                 >
                   Add Member
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Member Modal */}
+      {editingMember && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className={`${darkMode ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto`}>
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                  Edit Member
+                </h3>
+                <button
+                  onClick={() => setEditingMember(null)}
+                  className="text-slate-400 hover:text-slate-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleEditMember} className="p-6 space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Username
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={editingMember.username || ''}
+                  className={`w-full px-4 py-2 rounded-lg border bg-slate-100 text-slate-500 cursor-not-allowed ${
+                    darkMode
+                      ? 'bg-slate-700 border-slate-600 text-slate-400'
+                      : 'bg-slate-100 border-slate-300 text-slate-500'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  disabled
+                  value={editingMember.email || ''}
+                  className={`w-full px-4 py-2 rounded-lg border bg-slate-100 text-slate-500 cursor-not-allowed ${
+                    darkMode
+                      ? 'bg-slate-700 border-slate-600 text-slate-400'
+                      : 'bg-slate-100 border-slate-300 text-slate-500'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={editingMember.phone || ''}
+                  onChange={(e) => setEditingMember({ ...editingMember, phone: e.target.value })}
+                  className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    darkMode
+                      ? 'bg-slate-700 border-slate-600 text-white'
+                      : 'bg-white border-slate-300 text-slate-800'
+                  }`}
+                  placeholder="Enter phone number"
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Role
+                </label>
+                <select
+                  value={editingMember.role || ''}
+                  onChange={(e) => setEditingMember({ ...editingMember, role: e.target.value })}
+                  className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    darkMode
+                      ? 'bg-slate-700 border-slate-600 text-white'
+                      : 'bg-white border-slate-300 text-slate-800'
+                  }`}
+                >
+                  <option value="">Select Role</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="TEAM_LEAD">Team Lead</option>
+                  <option value="RECRUITER">Recruiter</option>
+                  <option value="SENIOR_RECRUITER">Senior Recruiter</option>
+                  <option value="HR_EXECUTIVE">HR Executive</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Department
+                </label>
+                <select
+                  value={editingMember.department || ''}
+                  onChange={(e) => setEditingMember({ ...editingMember, department: e.target.value })}
+                  className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    darkMode
+                      ? 'bg-slate-700 border-slate-600 text-white'
+                      : 'bg-white border-slate-300 text-slate-800'
+                  }`}
+                >
+                  <option value="">Select Department</option>
+                  <option value="IT">IT</option>
+                  <option value="HR">HR</option>
+                  <option value="Recruitment">Recruitment</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="IT Operations">IT Operations</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingMember(null)}
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Updating...' : 'Update Member'}
                 </button>
               </div>
             </form>
