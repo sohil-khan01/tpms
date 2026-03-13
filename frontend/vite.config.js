@@ -7,10 +7,11 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   server: {
     host: '0.0.0.0',
-    allowedHosts: ['localhost:4000'],
+    port: 5173,
+    allowedHosts: ['localhost:8080'],
     proxy: {
       '^/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:4000',
+        target: process.env.VITE_API_URL || 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
       },
@@ -18,4 +19,7 @@ export default defineConfig({
 
   },
   plugins: [react(), tailwindcss(),],
+  define: {
+    global: 'globalThis',
+  },
 })

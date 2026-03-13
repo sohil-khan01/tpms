@@ -10,6 +10,19 @@ const Members = ({ darkMode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingMember, setEditingMember] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Check if current user is admin
+  useEffect(() => {
+    const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+    setCurrentUser(adminUser);
+    
+    // If user is not admin, redirect to dashboard
+    if (adminUser.role && adminUser.role !== 'ADMIN' && adminUser.role !== 'Admin') {
+      navigate('/dashboard');
+      return;
+    }
+  }, [navigate]);
 
   const [newMember, setNewMember] = useState({
     username: '',
@@ -145,15 +158,100 @@ const Members = ({ darkMode }) => {
     }
   };
 
-  const handleDeleteMember = async (id) => {
-    const confirmed = window.confirm('Are you sure you want to delete this member?');
+  const handleToggleStatus = async (member) => {
+    const newStatus = member.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    const confirmed = window.confirm(
+      `Are you sure you want to ${newStatus === 'ACTIVE' ? 'activate' : 'deactivate'} ${member.username}?`
+    );
+    
     if (confirmed) {
       try {
         setLoading(true);
-        await membersAPI.delete(id);
+        
+        if (newStatus === 'INACTIVE') {
+          // Try WebSocket endpoint first
+          try {
+            await membersAPI.deactivate(member.username);
+            console.log(`User ${member.username} deactivated with WebSocket notification`);
+          } catch (error) {
+            console.warn('WebSocket deactivate failed, using fallback method:', error);
+            
+            // Fallback: Use regular update + localStorage notification
+            const updateData = { status: newStatus };
+            await membersAPI.update(member.id, updateData);
+            
+            // Set localStorage flag as fallback
+            localStorage.setItem('forceLogout_' + member.id, Date.now().toString());
+            console.log(`User ${member.username} deactivated with localStorage fallback`);
+          }
+        } else {
+          // For activation, use regular update
+          const updateData = { status: newStatus };
+          await membersAPI.update(member.id, updateData);
+          console.log(`User ${member.username} activated`);
+        }
+        
         await fetchMembers(); // Refresh the list
+        
+      } catch (error) {
+        console.error('Failed to update member status:', error);
+        
+        // Check if it's an authentication error
+        if (error.message.includes('Session expired') || error.message.includes('unauthenticated')) {
+          // WebSocket will handle the logout smoothly, just show a gentle message
+          console.log('Authentication error detected, WebSocket handling logout...');
+          setError('Session expired. You will be logged out automatically.');
+          return;
+        }
+        
+        setError(handleAPIError(error));
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleDeleteMember = async (id) => {
+    // Find the member to get username for WebSocket notification
+    const memberToDelete = members.find(m => m.id === id);
+    if (!memberToDelete) {
+      alert('Member not found');
+      return;
+    }
+
+    const confirmed = window.confirm(`Are you sure you want to delete ${memberToDelete.username}? This action cannot be undone.`);
+    if (confirmed) {
+      try {
+        setLoading(true);
+        
+        // Try WebSocket endpoint first
+        try {
+          await membersAPI.softDelete(id);
+          console.log(`User ${memberToDelete.username} deleted with WebSocket notification`);
+        } catch (error) {
+          console.warn('WebSocket delete failed, using fallback method:', error);
+          
+          // Fallback: Use regular delete + localStorage notification
+          await membersAPI.delete(id);
+          
+          // Set localStorage flag as fallback
+          localStorage.setItem('forceLogout_' + id, Date.now().toString());
+          console.log(`User ${memberToDelete.username} deleted with localStorage fallback`);
+        }
+        
+        await fetchMembers(); // Refresh the list
+        
       } catch (error) {
         console.error('Failed to delete member:', error);
+        
+        // Check if it's an authentication error
+        if (error.message.includes('Session expired') || error.message.includes('unauthenticated')) {
+          // WebSocket will handle the logout smoothly, just show a gentle message
+          console.log('Authentication error detected, WebSocket handling logout...');
+          setError('Session expired. You will be logged out automatically.');
+          return;
+        }
+        
         setError(handleAPIError(error));
       } finally {
         setLoading(false);
@@ -201,6 +299,31 @@ const Members = ({ darkMode }) => {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className={darkMode ? 'text-slate-400' : 'text-slate-600'}>Loading members...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has admin access
+  if (currentUser && currentUser.role && currentUser.role !== 'ADMIN' && currentUser.role !== 'Admin') {
+    return (
+      <div className={`p-8 min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-6xl mb-4">🚫</div>
+            <h3 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+              Access Denied
+            </h3>
+            <p className={`mb-4 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+              You don't have permission to access the Members page. Only administrators can manage team members.
+            </p>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Go to Dashboard
+            </button>
           </div>
         </div>
       </div>
@@ -367,15 +490,23 @@ const Members = ({ darkMode }) => {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    <button
+                      onClick={() => handleToggleStatus(member)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer ${
                         member.status === 'ACTIVE' || !member.status
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-slate-100 text-slate-700'
+                          ? 'bg-green-500'
+                          : 'bg-gray-300'
                       }`}
+                      title={member.status === 'ACTIVE' || !member.status ? 'Active - Click to Deactivate' : 'Inactive - Click to Activate'}
                     >
-                      {member.status === 'ACTIVE' || !member.status ? 'Active' : 'Inactive'}
-                    </span>
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          member.status === 'ACTIVE' || !member.status
+                            ? 'translate-x-6'
+                            : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
 
                   <div className="space-y-2 mb-4">
@@ -487,27 +618,37 @@ const Members = ({ darkMode }) => {
                     </span>
                   </td>
                   <td className="p-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <button
+                      onClick={() => handleToggleStatus(member)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer ${
                         member.status === 'ACTIVE' || !member.status
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-slate-100 text-slate-700'
+                          ? 'bg-green-500'
+                          : 'bg-gray-300'
                       }`}
+                      title={member.status === 'ACTIVE' || !member.status ? 'Active - Click to Deactivate' : 'Inactive - Click to Activate'}
                     >
-                      {member.status === 'ACTIVE' || !member.status ? 'Active' : 'Inactive'}
-                    </span>
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          member.status === 'ACTIVE' || !member.status
+                            ? 'translate-x-6'
+                            : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </td>
                   <td className="p-4">
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 items-center">
                       <button 
                         onClick={() => setEditingMember(member)}
                         className="text-blue-600 hover:text-blue-800 font-medium text-sm cursor-pointer"
+                        title="Edit Member"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteMember(member.id)}
                         className="text-red-600 hover:text-red-800 font-medium text-sm cursor-pointer"
+                        title="Delete Member"
                       >
                         Delete
                       </button>
@@ -630,7 +771,7 @@ const Members = ({ darkMode }) => {
                   }`}
                 >
                   <option value="">Select Role</option>
-                  <option value="ADMIN">Admin</option>
+                  {/* <option value="ADMIN">Admin</option> */}
                   <option value="MANAGER">Manager</option>
                   <option value="TEAM_LEAD">Team Lead</option>
                   <option value="RECRUITER">Recruiter</option>
@@ -796,7 +937,7 @@ const Members = ({ darkMode }) => {
                   }`}
                 >
                   <option value="">Select Role</option>
-                  <option value="ADMIN">Admin</option>
+                  {/* <option value="ADMIN">Admin</option> */}
                   <option value="MANAGER">Manager</option>
                   <option value="TEAM_LEAD">Team Lead</option>
                   <option value="RECRUITER">Recruiter</option>

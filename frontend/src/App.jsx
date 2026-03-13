@@ -12,6 +12,8 @@ import Settings from './components/Settings';
 import AdminProfile from './components/AdminProfile';
 import CandidateProfile from './components/CandidateProfile';
 import Login from './components/Login';
+import LogoutListener from './components/LogoutListener';
+import WebSocketStatus from './components/WebSocketStatus';
 import './App.css';
 import Members from './components/Members';
 
@@ -20,6 +22,7 @@ function App() {
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
+  const [logoutMessage, setLogoutMessage] = useState('');
 
   // Load authentication state and dark mode preference from localStorage
   useEffect(() => {
@@ -27,15 +30,78 @@ function App() {
     const savedUser = localStorage.getItem('adminUser');
     const savedDarkMode = localStorage.getItem('darkMode');
     
+    if (process.env.NODE_ENV === 'development') {
+      console.log('App.jsx - Loading saved data:', { savedAuth, savedUser });
+    }
+    
     if (savedAuth === 'true' && savedUser) {
+      const userData = JSON.parse(savedUser);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('App.jsx - Parsed user data:', userData);
+      }
       setIsAuthenticated(true);
-      setAdminUser(JSON.parse(savedUser));
+      setAdminUser(userData);
     }
     
     if (savedDarkMode) {
       setDarkMode(JSON.parse(savedDarkMode));
     }
   }, []);
+
+  // Global error handler for 401 errors
+  useEffect(() => {
+    const handleGlobalError = (event) => {
+      // Check if it's a 401 error from fetch
+      if (event.reason && event.reason.message && event.reason.message.includes('Session expired')) {
+        console.log('🚨 Global 401 error detected, forcing logout...');
+        handleLogout();
+      }
+    };
+
+    // Listen for unhandled promise rejections (like API 401 errors)
+    window.addEventListener('unhandledrejection', handleGlobalError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleGlobalError);
+    };
+  }, []);
+
+  // Monitor authentication state changes
+  useEffect(() => {
+    const checkAuthState = () => {
+      const savedAuth = localStorage.getItem('isAuthenticated');
+      const savedUser = localStorage.getItem('adminUser');
+      
+      // If user was authenticated but now localStorage is cleared, update state
+      if (isAuthenticated && (!savedAuth || savedAuth !== 'true' || !savedUser)) {
+        console.log('Authentication state lost, updating app state...');
+        setIsAuthenticated(false);
+        setAdminUser(null);
+      }
+    };
+
+    // Check immediately
+    checkAuthState();
+
+    // Set up interval to check every second
+    const authCheckInterval = setInterval(checkAuthState, 1000);
+
+    // Listen for storage changes (when other tabs or API calls clear auth)
+    const handleStorageChange = (e) => {
+      if (e.key === 'isAuthenticated' && e.newValue !== 'true') {
+        console.log('🔄 Authentication cleared by another process, logging out...');
+        setIsAuthenticated(false);
+        setAdminUser(null);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(authCheckInterval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [isAuthenticated]);
 
   // Save dark mode preference to localStorage
   useEffect(() => {
@@ -48,6 +114,9 @@ function App() {
   }, [darkMode]);
 
   const handleLogin = (userData) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('App.jsx - Received user data:', userData);
+    }
     setIsAuthenticated(true);
     setAdminUser(userData);
     localStorage.setItem('isAuthenticated', 'true');
@@ -56,18 +125,31 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      // Call backend logout API
+      // Try to call backend logout API, but don't fail if it doesn't work
       await authAPI.logout();
+    
+      console.log('✅ Backend logout successful');
     } catch (error) {
-      console.error('Logout API failed:', error);
-      // Continue with logout even if API fails
+      console.warn('⚠️ Backend logout failed, continuing with client-side logout:', error.message);
+      // Continue with logout even if API fails - this is expected for JWT systems
     } finally {
-      // Clear local storage and state
+      // Always perform client-side cleanup
+      console.log('🧹 Performing client-side logout cleanup');
+      
+      // Show logout message
+      setLogoutMessage('Session expired. Logging out...');
+      
+      // Clear state and storage
       setIsAuthenticated(false);
       setAdminUser(null);
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('adminUser');
       localStorage.removeItem('authToken');
+      
+      // Clear the message after a short delay
+      setTimeout(() => {
+        setLogoutMessage('');
+      }, 2000);
     }
   };
 
@@ -81,12 +163,33 @@ function App() {
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} darkMode={darkMode} />;
+    return (
+      <div>
+        {logoutMessage && (
+          <div className="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+            {logoutMessage}
+          </div>
+        )}
+        <Login onLogin={handleLogin} darkMode={darkMode} />
+      </div>
+    );
   }
 
   return (
     <Router>
       <div className={`flex h-screen ${darkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
+        {/* WebSocket Logout Listener - Only active when user is authenticated */}
+        {isAuthenticated && adminUser && (
+          <>
+            <LogoutListener 
+              currentUser={adminUser} 
+              onLogout={handleLogout}
+            />
+            <WebSocketStatus currentUser={adminUser} />
+          
+          </>
+        )}
+        
         <Sidebar 
           darkMode={darkMode}
           adminUser={adminUser}
@@ -128,7 +231,12 @@ function App() {
             />
             <Route 
               path="/profile" 
-              element={<AdminProfile darkMode={darkMode} adminUser={adminUser} />} 
+              element={
+                <AdminProfile 
+                  darkMode={darkMode} 
+                  adminUser={adminUser}
+                />
+              } 
             />
             <Route 
               path="/settings" 

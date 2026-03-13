@@ -21,33 +21,78 @@ const Login = ({ onLogin, darkMode }) => {
         password: credentials.password,
       });
 
+      // Check if user is active before allowing login
+      if (data.status && (data.status === 'INACTIVE' || data.status === 'DELETED')) {
+        setError('Your account has been deactivated or deleted. Please contact your administrator.');
+        setIsLoading(false);
+        return;
+      }
+
       // Success - API returned valid response
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Login API response:', data);
+      }
+      
+      // Handle different possible response structures
+      let userData = data;
+      
+      // If response has a nested user object
+      if (data.user) {
+        userData = data.user;
+      }
+      
+      // If response has a nested data object
+      if (data.data) {
+        userData = data.data;
+      }
+      
       const adminData = {
-        id: data.id || 1,
-        name: data.name || data.fullName || 'Admin User',
-        email: credentials.email,
-        role: data.role || 'Admin',
-        token: data.token || data.accessToken,
+        id: userData.id || userData.userId || 1,
+        name: userData.name || userData.fullName || 
+              (userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : 
+               userData.firstName || userData.lastName || userData.username),
+        username: userData.username || userData.email,
+        email: userData.email || credentials.email,
+        phone: userData.phone || userData.phoneNumber,
+        department: userData.department,
+        role: userData.role || userData.userRole || 'User',
+        status: userData.status || userData.accountStatus || 'ACTIVE',
+        token: userData.token || userData.accessToken || data.token || data.accessToken,
+        createdAt: userData.createdAt || userData.joinDate,
       };
       
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Processed admin data:', adminData);
+      }
+      
       // Store token for future API calls
-      localStorage.setItem('authToken', adminData.token);
+      if (adminData.token) {
+        localStorage.setItem('authToken', adminData.token);
+      }
       
       onLogin(adminData);
     } catch (error) {
       console.error('Login failed:', error);
-      setError(handleAPIError(error));
+      
+      // Check if error is related to inactive account
+      if (error.message && error.message.toLowerCase().includes('inactive')) {
+        setError('Your account has been deactivated. Please contact your administrator.');
+      } else if (error.message && error.message.toLowerCase().includes('deleted')) {
+        setError('Your account no longer exists. Please contact your administrator.');
+      } else {
+        setError(handleAPIError(error));
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDemoLogin = () => {
-    setCredentials({
-      email: 'admin@1234',
-      password: 'admin@1234',
-    });
-  };
+  // const handleDemoLogin = () => {
+  //   setCredentials({
+  //     email: 'admin@1234',
+  //     password: 'admin@1234',
+  //   });
+  // };
 
   return (
     <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-slate-100'} py-12 px-4 sm:px-6 lg:px-8`}>

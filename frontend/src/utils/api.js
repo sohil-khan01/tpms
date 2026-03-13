@@ -66,6 +66,29 @@ const apiCall = async (endpoint, options = {}) => {
         errorMessage = responseText || response.statusText || errorMessage;
       }
       
+      // Special handling for authentication errors
+      if (response.status === 401 || errorMessage.toLowerCase().includes('unauthenticated') || errorMessage.toLowerCase().includes('unauthorized')) {
+        console.log('🚨 Authentication error detected - forcing logout...');
+        
+        // Force logout immediately when getting 401 errors
+        setTimeout(() => {
+          console.log('🔄 Performing forced logout due to 401 error');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('adminUser');
+          localStorage.removeItem('isAuthenticated');
+          
+          // Trigger storage event to notify App component
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: 'isAuthenticated',
+            newValue: 'false',
+            oldValue: 'true'
+          }));
+        }, 500);
+        
+        // Just throw a gentle error that won't disrupt the flow
+        throw new Error('Session expired. Please wait for automatic logout.');
+      }
+      
       throw new Error(errorMessage);
     }
 
@@ -84,14 +107,28 @@ const apiCall = async (endpoint, options = {}) => {
 // Auth API calls
 export const authAPI = {
   login: async (credentials) => {
-    return apiCall('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: credentials.username,
-        password: credentials.password,
-      }),
-      includeAuth: false,
-    });
+    // Try the main login endpoint first
+    try {
+      return await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: credentials.username,
+          password: credentials.password,
+        }),
+        includeAuth: false,
+      });
+    } catch (error) {
+      // If main endpoint fails, try alternative endpoint
+      console.log('Main login endpoint failed, trying alternative...');
+      return await apiCall('/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: credentials.username,
+          password: credentials.password,
+        }),
+        includeAuth: false,
+      });
+    }
   },
 
   logout: async () => {
@@ -199,8 +236,15 @@ export const dashboardAPI = {
 
 // Members API calls
 export const membersAPI = {
-  getAll: async () => {
-    return apiCall('/members/all');
+ getAll: async () => {
+ 
+    const adminUserJson = localStorage.getItem('adminUser');
+    if (!adminUserJson) {
+      throw new Error('Admin user data not found in storage');
+    }
+    const adminUser = JSON.parse(adminUserJson);
+    const id = adminUser.id;
+    return apiCall(`/members/all/${id}`);
   },
 
   getById: async (id) => {
@@ -222,7 +266,21 @@ export const membersAPI = {
   },
 
   delete: async (id) => {
-    return apiCall(`/members/soft-delete/${id}`, {
+    return apiCall(`/members/delete/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Deactivate user with WebSocket notification
+  deactivate: async (username) => {
+    return apiCall(`/auth/deactivate/${username}`, {
+      method: 'PUT',
+    });
+  },
+
+  // Soft delete user with WebSocket notification  
+  softDelete: async (id) => {
+    return apiCall(`/members/delete/${id}`, {
       method: 'DELETE',
     });
   },
@@ -234,12 +292,9 @@ export const handleAPIError = (error) => {
   
   if (error.message.includes('fetch')) {
     return 'Unable to connect to server. Please check if the backend is running.';
-  } else if (error.message.includes('401')) {
-    // Unauthorized - redirect to login
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('adminUser');
-    window.location.href = '/';
-    return 'Session expired. Please login again.';
+  } else if (error.message.includes('401') || error.message.toLowerCase().includes('unauthenticated')) {
+    // Don't force logout here, WebSocket will handle it smoothly
+    return 'Session expired. Automatic logout in progress...';
   } else if (error.message.includes('403')) {
     return 'You do not have permission to perform this action.';
   } else if (error.message.includes('404')) {
