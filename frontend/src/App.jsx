@@ -17,6 +17,7 @@ import WebSocketStatus from './components/WebSocketStatus';
 import './App.css';
 import Members from './components/Members';
 
+
 function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
@@ -37,7 +38,7 @@ function App() {
     if (savedAuth === 'true' && savedUser) {
       const userData = JSON.parse(savedUser);
       if (process.env.NODE_ENV === 'development') {
-        console.log('App.jsx - Parsed user data:', userData);
+        // console.log('App.jsx - Parsed user data:', userData);
       }
       setIsAuthenticated(true);
       setAdminUser(userData);
@@ -72,9 +73,9 @@ function App() {
       const savedAuth = localStorage.getItem('isAuthenticated');
       const savedUser = localStorage.getItem('adminUser');
       
-      // If user was authenticated but now localStorage is cleared, update state
+      // If user was authenticated but now localStorage is cleared, update state immediately
       if (isAuthenticated && (!savedAuth || savedAuth !== 'true' || !savedUser)) {
-        console.log('Authentication state lost, updating app state...');
+        console.log('🔄 Authentication state lost, updating app state immediately...');
         setIsAuthenticated(false);
         setAdminUser(null);
       }
@@ -83,13 +84,13 @@ function App() {
     // Check immediately
     checkAuthState();
 
-    // Set up interval to check every second
-    const authCheckInterval = setInterval(checkAuthState, 1000);
+    // Set up interval to check more frequently for faster response
+    const authCheckInterval = setInterval(checkAuthState, 200);
 
     // Listen for storage changes (when other tabs or API calls clear auth)
     const handleStorageChange = (e) => {
       if (e.key === 'isAuthenticated' && e.newValue !== 'true') {
-        console.log('🔄 Authentication cleared by another process, logging out...');
+        console.log('🔄 Authentication cleared by WebSocket/API, logging out immediately...');
         setIsAuthenticated(false);
         setAdminUser(null);
       }
@@ -124,33 +125,31 @@ function App() {
   };
 
   const handleLogout = async () => {
-    try {
-      // Try to call backend logout API, but don't fail if it doesn't work
-      await authAPI.logout();
+    console.log('🧹 Performing client-side logout cleanup');
     
+    // Show logout message
+    setLogoutMessage('Logging out...');
+    
+    // Clear state and storage immediately (don't wait for API)
+    setIsAuthenticated(false);
+    setAdminUser(null);
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('adminUser');
+    localStorage.removeItem('authToken');
+    
+    // Try to call backend logout API in background (optional)
+    try {
+      await authAPI.logout();
       console.log('✅ Backend logout successful');
     } catch (error) {
-      console.warn('⚠️ Backend logout failed, continuing with client-side logout:', error.message);
-      // Continue with logout even if API fails - this is expected for JWT systems
-    } finally {
-      // Always perform client-side cleanup
-      console.log('🧹 Performing client-side logout cleanup');
-      
-      // Show logout message
-      setLogoutMessage('Session expired. Logging out...');
-      
-      // Clear state and storage
-      setIsAuthenticated(false);
-      setAdminUser(null);
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('adminUser');
-      localStorage.removeItem('authToken');
-      
-      // Clear the message after a short delay
-      setTimeout(() => {
-        setLogoutMessage('');
-      }, 2000);
+      console.warn('⚠️ Backend logout failed (this is okay for JWT systems):', error.message);
+      // This is not critical for JWT-based systems since logout is primarily client-side
     }
+    
+    // Clear the message after a short delay
+    setTimeout(() => {
+      setLogoutMessage('');
+    }, 2000);
   };
 
   const toggleDarkMode = () => {
@@ -163,6 +162,11 @@ function App() {
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
+    // Ensure URL is at root when not authenticated
+    if (window.location.pathname !== '/') {
+      window.history.replaceState(null, '', '/');
+    }
+    
     return (
       <div>
         {logoutMessage && (
@@ -186,7 +190,7 @@ function App() {
               onLogout={handleLogout}
             />
             <WebSocketStatus currentUser={adminUser} />
-          
+         
           </>
         )}
         

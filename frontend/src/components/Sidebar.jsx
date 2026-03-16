@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CiLogout } from "react-icons/ci";
-import { membersAPI, handleAPIError } from '../utils/api';
+import { membersAPI } from '../utils/api';
 
 const Sidebar = ({ darkMode, adminUser, onLogout }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -9,6 +9,7 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [actualUserData, setActualUserData] = useState(null);
   const [userDataLoading, setUserDataLoading] = useState(false);
+  const lastFetchedUserId = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,10 +20,26 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
     }
   }, [adminUser]);
 
-  // Fetch actual user data from API
+  // Fetch actual user data from API (only once per user)
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!adminUser?.id || userDataLoading) return;
+      // Don't fetch if no user ID
+      if (!adminUser?.id) {
+        console.log('Sidebar - No admin user ID available');
+        return;
+      }
+
+      // Don't fetch if already loading
+      if (userDataLoading) {
+        console.log('Sidebar - Already loading user data, skipping...');
+        return;
+      }
+
+      // Don't fetch if we already have data for this user
+      if (lastFetchedUserId.current === adminUser.id) {
+        console.log('Sidebar - User data already fetched for ID:', adminUser.id);
+        return;
+      }
 
       // Don't fetch if we already know there's an auth issue
       const isAuthenticated = localStorage.getItem('isAuthenticated');
@@ -36,18 +53,21 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
         console.log('Sidebar - Fetching user data for ID:', adminUser.id);
         const userData = await membersAPI.getById(adminUser.id);
         console.log('Sidebar - Fetched user data:', userData);
-        console.log('Sidebar - User role from API:', userData?.role);
         setActualUserData(userData);
+        lastFetchedUserId.current = adminUser.id; // Mark as fetched
       } catch (error) {
         console.error('Sidebar - Failed to fetch user data:', error);
+        
+        // Mark as attempted to prevent retries
+        lastFetchedUserId.current = adminUser.id;
         
         // If it's an authentication error, don't retry and use fallback data
         if (error.message.includes('Session expired') || error.message.includes('401') || error.message.includes('Unauthorized')) {
           console.log('Sidebar - Authentication error detected, using localStorage data as fallback');
-          // Don't set actualUserData, just continue with adminUser data
           setActualUserData(null);
-          // Don't retry on auth errors
-          return;
+        } else if (error.message.includes('Access denied') || error.message.includes('403') || error.message.includes('Forbidden')) {
+          console.log('Sidebar - Access forbidden, user may not have permission to view member details');
+          setActualUserData(null);
         } else {
           // For other errors, continue with adminUser data
           setActualUserData(null);
@@ -57,8 +77,11 @@ const Sidebar = ({ darkMode, adminUser, onLogout }) => {
       }
     };
 
-    fetchUserData();
-  }, [adminUser?.id, userDataLoading]);
+    // Only fetch if we haven't fetched for this user yet
+    if (adminUser?.id && lastFetchedUserId.current !== adminUser.id && !userDataLoading) {
+      fetchUserData();
+    }
+  }, [adminUser?.id]); // Only depend on adminUser.id
 
   // Helper function to get user initials
   const getUserInitials = () => {

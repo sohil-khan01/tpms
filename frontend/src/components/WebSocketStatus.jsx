@@ -4,6 +4,7 @@ const WebSocketStatus = ({ currentUser }) => {
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
   const [lastMessage, setLastMessage] = useState('None');
   const [isVisible, setIsVisible] = useState(true);
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     // Listen for WebSocket status updates
@@ -34,6 +35,54 @@ const WebSocketStatus = ({ currentUser }) => {
       clearTimeout(timer);
     };
   }, [connectionStatus]);
+
+  const checkUserAuthorities = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/auth/debug/authorities`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('🔍 User authorities:', result);
+        setDebugInfo(`Auth: ${result.authorities || 'None'}`);
+      } else {
+        console.error('❌ Failed to check authorities:', response.status);
+        setDebugInfo(`Auth check failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Authority check error:', error);
+      setDebugInfo(`Auth error: ${error.message}`);
+    }
+  };
+
+  const testWebSocketLogout = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/auth/test-websocket/${currentUser.username}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.text();
+        console.log('🧪 WebSocket test sent:', result);
+        setDebugInfo(`Test sent: ${result}`);
+      } else {
+        console.error('❌ WebSocket test failed:', response.status);
+        setDebugInfo(`Test failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ WebSocket test error:', error);
+      setDebugInfo(`Test error: ${error.message}`);
+    }
+  };
 
   // Only show in development mode
   if (process.env.NODE_ENV !== 'development' || !isVisible) {
@@ -69,7 +118,22 @@ const WebSocketStatus = ({ currentUser }) => {
         {lastMessage !== 'None' && (
           <div className="text-yellow-300">Last: {lastMessage}</div>
         )}
+        {debugInfo && (
+          <div className="text-blue-300 text-xs">{debugInfo}</div>
+        )}
       </div>
+      <button 
+        onClick={checkUserAuthorities}
+        className="mt-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded mr-1"
+      >
+        Check Auth
+      </button>
+      <button 
+        onClick={testWebSocketLogout}
+        className="mt-2 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
+      >
+        Test Logout
+      </button>
     </div>
   );
 };

@@ -63,6 +63,7 @@ const Login = ({ onLogin, darkMode }) => {
       
       if (process.env.NODE_ENV === 'development') {
         console.log('Processed admin data:', adminData);
+        console.log('User role for security:', adminData.role);
       }
       
       // Store token for future API calls

@@ -3,6 +3,33 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useNavigate } from 'react-router-dom';
 
+// Utility function to handle logout with proper routing
+const forceLogoutWithRouting = (navigate) => {
+  console.log('🔄 Forcing logout with proper routing...');
+  
+  // Clear all authentication data
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('adminUser');
+  localStorage.removeItem('isAuthenticated');
+  
+  // Trigger storage event to notify App component
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: 'isAuthenticated',
+    newValue: 'false',
+    oldValue: 'true'
+  }));
+  
+  // Use React Router navigate to change URL without page refresh
+  if (navigate) {
+    navigate('/', { replace: true });
+  } else {
+    // Fallback: Force URL change to root path
+    window.history.replaceState(null, '', '/');
+  }
+  
+  console.log('✅ Logout routing completed');
+};
+
 const LogoutListener = ({ currentUser, onLogout }) => {
   const navigate = useNavigate();
   const stompClientRef = useRef(null);
@@ -32,13 +59,12 @@ const LogoutListener = ({ currentUser, onLogout }) => {
               console.log('📡 STOMP Debug:', str);
             }
           },
-          reconnectDelay: 5000,
+          // Disable automatic reconnection to handle it manually
+          reconnectDelay: 0,
           heartbeatIncoming: 4000,
           heartbeatOutgoing: 4000,
           // Add connection timeout
           connectionTimeout: 15000,
-          // Disable automatic reconnection to handle it manually
-          reconnectDelay: 0,
         });
 
         stompClientRef.current = client;
@@ -56,16 +82,33 @@ const LogoutListener = ({ currentUser, onLogout }) => {
           }
           
           // Subscribe to user-specific logout topic
-          client.subscribe(
+          console.log('🎯 Subscribing to user-specific topic:', `/user/${currentUser.username}/topic/logout`);
+          const userSubscription = client.subscribe(
             `/user/${currentUser.username}/topic/logout`, 
             (message) => {
-              console.log('📨 Received logout message:', message.body);
-              localStorage.setItem('wsLastMessage', message.body);
+              console.log('📨 Received user-specific logout message:', message.body);
+              localStorage.setItem('wsLastMessage', `User-specific: ${message.body}`);
               handleLogoutMessage(message.body);
             }
           );
 
-          console.log('🎯 Subscribed to logout topic:', `/user/${currentUser.username}/topic/logout`);
+          // Also subscribe to general topic as backup
+          console.log('🎯 Subscribing to general topic:', `/topic/logout/${currentUser.username}`);
+          const generalSubscription = client.subscribe(
+            `/topic/logout/${currentUser.username}`, 
+            (message) => {
+              console.log('📨 Received general logout message:', message.body);
+              localStorage.setItem('wsLastMessage', `General: ${message.body}`);
+              handleLogoutMessage(message.body);
+            }
+          );
+
+          console.log('🎯 Successfully subscribed to both logout topics for user:', currentUser.username);
+          
+          // Test the subscription by sending a test message
+          setTimeout(() => {
+            console.log('🧪 WebSocket connection established and ready for user:', currentUser.username);
+          }, 1000);
         };
 
         // Error handlers
@@ -130,13 +173,34 @@ const LogoutListener = ({ currentUser, onLogout }) => {
       if (message === "FORCE_LOGOUT") {
         console.log('🚪 Force logout triggered for user:', currentUser.username);
         
-        // Create and show beautiful notification
+        // Immediate logout without waiting for notification
+        console.log('⚡ Performing immediate logout...');
+        
+        // Call parent logout handler immediately
+        if (onLogout) {
+          onLogout();
+        }
+        
+        // Clear authentication data immediately
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('adminUser');
+        localStorage.removeItem('isAuthenticated');
+        
+        // Trigger storage event to notify App component
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'isAuthenticated',
+          newValue: 'false',
+          oldValue: 'true'
+        }));
+        
+        // Show notification after logout is initiated
         showLogoutNotification();
         
-        // Perform logout after notification
+        // Navigate to login page
         setTimeout(() => {
-          performSmoothLogout();
-        }, 3000);
+          forceLogoutWithRouting(navigate);
+        }, 100);
+        
       } else if (message === "TEST_MESSAGE") {
         console.log('🧪 Test message received for user:', currentUser.username);
         // Don't trigger logout for test messages
@@ -185,7 +249,7 @@ const LogoutListener = ({ currentUser, onLogout }) => {
             </div>
             <div style="font-size: 16px; line-height: 1.5; margin-bottom: 20px; color: #cbd5e1;">
               Your account has been deactivated by an administrator.<br>
-              You will be logged out automatically.
+              Redirecting to login page...
             </div>
             <div style="
               background: #dc2626;
@@ -195,13 +259,20 @@ const LogoutListener = ({ currentUser, onLogout }) => {
               font-size: 14px;
               display: inline-block;
             ">
-              Logging out in 3 seconds...
+              Logging out...
             </div>
           </div>
         </div>
       `;
       
       document.body.appendChild(notification);
+      
+      // Auto-remove notification after 2 seconds
+      setTimeout(() => {
+        if (notification && notification.parentNode) {
+          notification.remove();
+        }
+      }, 2000);
     };
 
     const performSmoothLogout = () => {
@@ -213,26 +284,38 @@ const LogoutListener = ({ currentUser, onLogout }) => {
         notification.remove();
       }
       
-      // Clear authentication data
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('adminUser');
-      localStorage.removeItem('isAuthenticated');
-      
       // Call parent logout handler if available
       if (onLogout) {
         onLogout();
       }
       
-      // Use window.location.replace for smooth navigation without refresh
-      window.location.replace('/');
+      // Use utility function for proper logout routing
+      forceLogoutWithRouting(navigate);
     };
 
     // Initialize connection
     connectWebSocket();
 
+    // Fallback mechanism: Check localStorage for logout flags more frequently
+    const checkLogoutFlags = () => {
+      const logoutFlag = localStorage.getItem(`forceLogout_${currentUser.username}`);
+      if (logoutFlag) {
+        console.log('🚨 Found logout flag in localStorage, forcing immediate logout...');
+        localStorage.removeItem(`forceLogout_${currentUser.username}`);
+        handleLogoutMessage('FORCE_LOGOUT');
+      }
+    };
+
+    // Check immediately and then every 500ms for faster response
+    checkLogoutFlags();
+    const logoutCheckInterval = setInterval(checkLogoutFlags, 500);
+
     // Cleanup function
     return () => {
       console.log('🧹 Cleaning up WebSocket for user:', currentUser.username);
+      
+      // Clear intervals
+      clearInterval(logoutCheckInterval);
       
       // Clear reconnect timeout
       if (reconnectTimeoutRef.current) {

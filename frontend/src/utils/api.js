@@ -1,3 +1,22 @@
+// Utility function to handle logout routing
+const forceLogoutWithRouting = () => {
+  console.log('🔄 Forcing logout with proper routing...');
+  
+  // Clear all authentication data
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('adminUser');
+  localStorage.removeItem('isAuthenticated');
+  
+  // Trigger storage event to notify App component
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: 'isAuthenticated',
+    newValue: 'false',
+    oldValue: 'true'
+  }));
+  
+  console.log('✅ Logout routing completed - App component will handle URL change');
+};
+
 // API Base URL from environment variable
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -72,21 +91,17 @@ const apiCall = async (endpoint, options = {}) => {
         
         // Force logout immediately when getting 401 errors
         setTimeout(() => {
-          console.log('🔄 Performing forced logout due to 401 error');
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('adminUser');
-          localStorage.removeItem('isAuthenticated');
-          
-          // Trigger storage event to notify App component
-          window.dispatchEvent(new StorageEvent('storage', {
-            key: 'isAuthenticated',
-            newValue: 'false',
-            oldValue: 'true'
-          }));
+          forceLogoutWithRouting();
         }, 500);
         
         // Just throw a gentle error that won't disrupt the flow
         throw new Error('Session expired. Please wait for automatic logout.');
+      }
+      
+      // Special handling for forbidden errors (403)
+      if (response.status === 403 || errorMessage.toLowerCase().includes('forbidden')) {
+        console.log('🚫 Access forbidden - user may not have required permissions');
+        throw new Error('Access denied. You do not have permission to access this resource.');
       }
       
       throw new Error(errorMessage);
@@ -295,8 +310,8 @@ export const handleAPIError = (error) => {
   } else if (error.message.includes('401') || error.message.toLowerCase().includes('unauthenticated')) {
     // Don't force logout here, WebSocket will handle it smoothly
     return 'Session expired. Automatic logout in progress...';
-  } else if (error.message.includes('403')) {
-    return 'You do not have permission to perform this action.';
+  } else if (error.message.includes('403') || error.message.toLowerCase().includes('forbidden')) {
+    return 'Access denied. You do not have permission to perform this action.';
   } else if (error.message.includes('404')) {
     return 'Requested resource not found.';
   } else if (error.message.includes('500')) {

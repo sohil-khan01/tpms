@@ -172,23 +172,23 @@ const Members = ({ darkMode }) => {
           // Try WebSocket endpoint first
           try {
             await membersAPI.deactivate(member.username);
-            console.log(`User ${member.username} deactivated with WebSocket notification`);
+            console.log(`✅ User ${member.username} deactivated with WebSocket notification`);
           } catch (error) {
-            console.warn('WebSocket deactivate failed, using fallback method:', error);
+            console.warn('⚠️ WebSocket deactivate failed, using fallback method:', error);
             
             // Fallback: Use regular update + localStorage notification
             const updateData = { status: newStatus };
             await membersAPI.update(member.id, updateData);
             
-            // Set localStorage flag as fallback
-            localStorage.setItem('forceLogout_' + member.id, Date.now().toString());
-            console.log(`User ${member.username} deactivated with localStorage fallback`);
+            // Set localStorage flag as fallback (use username for consistency)
+            localStorage.setItem(`forceLogout_${member.username}`, Date.now().toString());
+            console.log(`✅ User ${member.username} deactivated with localStorage fallback`);
           }
         } else {
           // For activation, use regular update
           const updateData = { status: newStatus };
           await membersAPI.update(member.id, updateData);
-          console.log(`User ${member.username} activated`);
+          console.log(`✅ User ${member.username} activated`);
         }
         
         await fetchMembers(); // Refresh the list
@@ -227,16 +227,16 @@ const Members = ({ darkMode }) => {
         // Try WebSocket endpoint first
         try {
           await membersAPI.softDelete(id);
-          console.log(`User ${memberToDelete.username} deleted with WebSocket notification`);
+          console.log(`✅ User ${memberToDelete.username} deleted with WebSocket notification`);
         } catch (error) {
-          console.warn('WebSocket delete failed, using fallback method:', error);
+          console.warn('⚠️ WebSocket delete failed, using fallback method:', error);
           
           // Fallback: Use regular delete + localStorage notification
           await membersAPI.delete(id);
           
-          // Set localStorage flag as fallback
-          localStorage.setItem('forceLogout_' + id, Date.now().toString());
-          console.log(`User ${memberToDelete.username} deleted with localStorage fallback`);
+          // Set localStorage flag as fallback (use username for consistency)
+          localStorage.setItem(`forceLogout_${memberToDelete.username}`, Date.now().toString());
+          console.log(`✅ User ${memberToDelete.username} deleted with localStorage fallback`);
         }
         
         await fetchMembers(); // Refresh the list
