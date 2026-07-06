@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Global cursor pointer for interactive elements */
+button:not(:disabled),
+a,
+[role="button"],
+[role="tab"],
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}

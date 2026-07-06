@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.3.0/bundles/stomp.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .connecting { background-color: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #messages { border: 1px solid #ccc; height: 200px; overflow-y: auto; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div>
+        <label for="username">Username:</label>
+        <input type="text" id="username" value="testuser" placeholder="Enter username">
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="sendTestMessage()">Send Test Message</button>
+    </div>
+    
+    <div id="messages"></div>
+    
+    <div>
+        <h3>Connection Details:</h3>
+        <p>WebSocket URL: <code id="websocket-url">Loading...</code></p>
+        <p>Topic: <code>/user/{username}/topic/logout</code></p>
+        <p>Test Endpoint: <code id="test-endpoint">Loading...</code></p>
+    </div>
+
+    <script>
+        // Get backend URL from environment or use default
+        // Change this URL for different environments
+        const BACKEND_URL = 'https://tpms.8bit.co.in'; // Production
+        // const BACKEND_URL = 'http://localhost:2000'; // Local development
+        const API_BASE_URL = `${BACKEND_URL}/api`;
+        
+        // Update display
+        document.getElementById('websocket-url').textContent = `${BACKEND_URL}/ws-logout`;
+        document.getElementById('test-endpoint').textContent = `POST ${API_BASE_URL}/auth/test-websocket/{username}`;
+
+        let stompClient = null;
+        let connected = false;
+
+        function setStatus(message, className) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${className}`;
+        }
+
+        function addMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function connect() {
+            const username = document.getElementById('username').value;
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            console.log('🔌 Connecting to WebSocket...');
+            setStatus('Connecting...', 'connecting');
+            addMessage('Attempting to connect...');
+
+            try {
+                const socket = new SockJS(`${BACKEND_URL}/ws-logout`);
+                stompClient = Stomp.over(socket);
+
+                stompClient.connect({}, function(frame) {
+                    console.log('✅ Connected: ' + frame);
+                    connected = true;
+                    setStatus('Connected', 'connected');
+                    addMessage('Connected successfully!');
+
+                    // Subscribe to user-specific topic
+                    stompClient.subscribe(`/user/${username}/topic/logout`, function(message) {
+                        console.log('📨 Received message:', message.body);
+                        addMessage(`Received: ${message.body}`);
+                        
+                        if (message.body === 'FORCE_LOGOUT') {
+                            addMessage('⚠️ FORCE_LOGOUT received - would trigger logout in real app');
+                        }
+                    });
+
+                    addMessage(`Subscribed to: /user/${username}/topic/logout`);
+
+                }, function(error) {
+                    console.error('❌ Connection error:', error);
+                    connected = false;
+                    setStatus('Connection Failed', 'disconnected');
+                    addMessage(`Connection failed: ${error}`);
+                });
+
+            } catch (error) {
+                console.error('❌ Setup error:', error);
+                setStatus('Setup Error', 'disconnected');
+                addMessage(`Setup error: ${error.message}`);
+            }
+        }
+
+        function disconnect() {
+            if (stompClient !== null && connected) {
+                stompClient.disconnect();
+                console.log('🔌 Disconnected');
+            }
+            connected = false;
+            setStatus('Disconnected', 'disconnected');
+            addMessage('Disconnected');
+        }
+
+        async function sendTestMessage() {
+            const username = document.getElementById('username').value;
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            if (!connected) {
+                alert('Please connect first');
+                return;
+            }
+
+            try {
+                addMessage('Sending test message via API...');
+                const response = await fetch(`${API_BASE_URL}/auth/test-websocket/${username}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (response.ok) {
+                    const result = await response.text();
+                    addMessage(`API Response: ${result}`);
+                } else {
+                    addMessage(`API Error: ${response.status} - ${response.statusText}`);
+                }
+            } catch (error) {
+                addMessage(`API Error: ${error.message}`);
+            }
+        }
+
+        // Auto-connect on page load for testing
+        window.onload = function() {
+            addMessage('Page loaded. Click Connect to test WebSocket connection.');
+        };
+    </script>
+</body>
+</html>
